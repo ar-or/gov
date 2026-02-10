@@ -1,0 +1,1881 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GovChat AI – Prototype</title>
+<style>
+  :root {
+    --sidebar-width: 280px;
+    --bg-dark: #1a1a2e;
+    --bg-sidebar: #16213e;
+    --bg-main: #f4f5f7;
+    --bg-chat: #ffffff;
+    --bg-input: #ffffff;
+    --accent: #0f3460;
+    --accent-light: #533483;
+    --accent-bright: #e94560;
+    --text-light: #e0e0e0;
+    --text-muted: #8a8fa3;
+    --text-dark: #1e1e2f;
+    --text-secondary: #555770;
+    --border: #e0e2e8;
+    --border-dark: #2a2d4a;
+    --user-bubble: #0f3460;
+    --ai-bubble: #f0f2f5;
+    --hover-dark: #1e2a4a;
+    --subheader-bg: #fafbfc;
+    --folder-bg: rgba(255,255,255,0.05);
+    --scrollbar-thumb: #3a3d5c;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    height: 100vh;
+    display: flex;
+    overflow: hidden;
+    background: var(--bg-main);
+    color: var(--text-dark);
+  }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: var(--sidebar-width);
+    min-width: var(--sidebar-width);
+    background: var(--bg-sidebar);
+    color: var(--text-light);
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border-dark);
+    z-index: 10;
+  }
+
+  .sidebar-header {
+    padding: 18px 16px 14px;
+    border-bottom: 1px solid var(--border-dark);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .sidebar-header .logo {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, var(--accent-bright), var(--accent-light));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px; color: #fff;
+    flex-shrink: 0;
+  }
+
+  .sidebar-header .brand {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+
+  .sidebar-header .brand small {
+    display: block;
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    margin-top: 1px;
+  }
+
+  .new-chat-btn {
+    margin: 12px 12px 8px;
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.07);
+    border: 1px dashed rgba(255,255,255,0.15);
+    border-radius: 8px;
+    color: var(--text-light);
+    font-size: 13px;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 8px;
+    transition: background 0.15s;
+  }
+  .new-chat-btn:hover { background: rgba(255,255,255,0.12); }
+  .new-chat-btn svg { width: 16px; height: 16px; opacity: 0.7; }
+
+  .sidebar-search {
+    margin: 4px 12px 8px;
+    position: relative;
+  }
+  .sidebar-search input {
+    width: 100%;
+    padding: 8px 10px 8px 32px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 6px;
+    color: var(--text-light);
+    font-size: 12px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .sidebar-search input::placeholder { color: var(--text-muted); }
+  .sidebar-search input:focus { border-color: rgba(255,255,255,0.2); }
+  .sidebar-search svg {
+    position: absolute; left: 9px; top: 50%; transform: translateY(-50%);
+    width: 14px; height: 14px; color: var(--text-muted);
+  }
+
+  .sidebar-nav {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 0;
+  }
+
+  .nav-section {
+    padding: 0 8px;
+    margin-bottom: 4px;
+  }
+
+  .nav-section-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    padding: 10px 8px 6px;
+  }
+
+  .folder {
+    margin-bottom: 2px;
+  }
+
+  .folder-header {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-light);
+    transition: background 0.12s;
+  }
+  .folder-header:hover { background: var(--hover-dark); }
+  .folder-header svg { width: 14px; height: 14px; opacity: 0.5; flex-shrink: 0; }
+  .folder-header .folder-icon { opacity: 0.6; }
+  .folder-header .chevron {
+    margin-left: auto;
+    transition: transform 0.2s;
+  }
+  .folder.open .folder-header .chevron { transform: rotate(90deg); }
+  .folder-header .count {
+    margin-left: auto;
+    margin-right: 4px;
+    font-size: 10px;
+    background: rgba(255,255,255,0.08);
+    padding: 1px 6px;
+    border-radius: 10px;
+    color: var(--text-muted);
+  }
+
+  .folder-items {
+    display: none;
+    padding-left: 12px;
+  }
+  .folder.open .folder-items { display: block; }
+
+  .chat-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 8px 7px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12.5px;
+    color: var(--text-muted);
+    transition: all 0.12s;
+    position: relative;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .chat-item:hover { background: var(--hover-dark); color: var(--text-light); }
+  .chat-item.active {
+    background: rgba(233, 69, 96, 0.12);
+    color: #fff;
+  }
+  .chat-item svg { width: 13px; height: 13px; opacity: 0.4; flex-shrink: 0; }
+  .chat-item .chat-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .chat-item .chat-date {
+    margin-left: auto;
+    font-size: 10px;
+    color: var(--text-muted);
+    opacity: 0.6;
+    flex-shrink: 0;
+  }
+
+  .sidebar-footer {
+    padding: 12px;
+    border-top: 1px solid var(--border-dark);
+    display: flex; align-items: center; gap: 10px;
+  }
+
+  .user-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4a6fa5, #3d5a80);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600; color: #fff;
+    flex-shrink: 0;
+  }
+
+  .user-info {
+    flex: 1; min-width: 0;
+  }
+  .user-info .name { font-size: 13px; font-weight: 500; }
+  .user-info .role { font-size: 10px; color: var(--text-muted); }
+
+  .sidebar-footer .settings-btn {
+    background: none; border: none; color: var(--text-muted);
+    cursor: pointer; padding: 4px;
+    border-radius: 4px; transition: color 0.15s;
+  }
+  .sidebar-footer .settings-btn:hover { color: var(--text-light); }
+  .sidebar-footer .settings-btn svg { width: 18px; height: 18px; }
+
+  /* ── Main Area ── */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  /* ── Sub-header / Case Info Bar ── */
+  .subheader {
+    background: var(--subheader-bg);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    box-shadow: var(--shadow);
+    flex-shrink: 0;
+  }
+
+  .case-icon {
+    width: 40px; height: 40px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-light));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .case-icon svg { width: 20px; height: 20px; color: #fff; }
+
+  .case-info { flex: 1; min-width: 0; }
+
+  .case-gz {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-dark);
+    letter-spacing: 0.2px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .case-gz .gz-label {
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+
+  .case-title {
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    margin-top: 3px;
+    line-height: 1.4;
+  }
+
+  .case-badges {
+    display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap;
+  }
+  .badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+  }
+  .badge-blue { background: #e8f0fe; color: #1a56db; }
+  .badge-green { background: #e6f9ee; color: #0d7a3e; }
+  .badge-amber { background: #fef3e2; color: #b45309; }
+  .badge-red { background: #fde8e8; color: #c81e1e; }
+
+  .subheader-actions {
+    display: flex; gap: 6px; align-items: center; flex-shrink: 0; margin-top: 4px;
+  }
+
+  .action-btn {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex; align-items: center; gap: 5px;
+    transition: all 0.12s;
+  }
+  .action-btn:hover { background: #f0f1f3; border-color: #ccc; }
+  .action-btn svg { width: 14px; height: 14px; }
+
+  .model-selector {
+    display: flex; align-items: center; gap: 6px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+  .model-selector .model-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #22c55e;
+  }
+
+  /* ── Chat Area ── */
+  .chat-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 0;
+    background: var(--bg-main);
+  }
+
+  .chat-container {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  .message {
+    margin-bottom: 24px;
+    display: flex;
+    gap: 12px;
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .message-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 600; color: #fff;
+    margin-top: 2px;
+  }
+  .message-avatar.user { background: linear-gradient(135deg, #4a6fa5, #3d5a80); }
+  .message-avatar.ai { background: linear-gradient(135deg, var(--accent-bright), var(--accent-light)); }
+
+  .message-content { flex: 1; min-width: 0; }
+
+  .message-header {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 4px;
+  }
+  .message-header .sender {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-dark);
+  }
+  .message-header .time {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .message-bubble {
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: var(--text-dark);
+    max-width: 100%;
+  }
+
+  .message.user .message-bubble {
+    background: var(--user-bubble);
+    color: #fff;
+    border-bottom-right-radius: 4px;
+  }
+
+  .message.ai .message-bubble {
+    background: var(--bg-chat);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+    box-shadow: var(--shadow);
+  }
+
+  .message-bubble p { margin-bottom: 8px; }
+  .message-bubble p:last-child { margin-bottom: 0; }
+
+  .message-bubble strong { font-weight: 600; }
+
+  .message-bubble ul, .message-bubble ol {
+    margin: 6px 0 6px 20px;
+  }
+  .message-bubble li { margin-bottom: 4px; }
+
+  .message-bubble .highlight {
+    background: #fef3c7;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-weight: 500;
+  }
+
+  .message-bubble .source-ref {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11px;
+    background: #e8f0fe;
+    color: #1a56db;
+    padding: 1px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    vertical-align: middle;
+  }
+  .source-ref:hover { background: #d4e4fd; }
+
+  /* ── Inline reference numbers ── */
+  .ref-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #1a56db;
+    background: #e8f0fe;
+    border-radius: 50%;
+    cursor: pointer;
+    vertical-align: super;
+    margin-left: 2px;
+    line-height: 1;
+    transition: all 0.15s;
+    text-decoration: none;
+  }
+  .ref-num:hover {
+    background: #1a56db;
+    color: #fff;
+    transform: scale(1.15);
+  }
+
+  /* Reference number badge on quote cards */
+  .qc-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px; height: 20px;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #fff;
+    background: #1a56db;
+    border-radius: 50%;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+  .quote-card.active-quote .qc-num {
+    background: var(--accent);
+  }
+
+  .message-actions {
+    display: flex; gap: 4px; margin-top: 6px; opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .message:hover .message-actions { opacity: 1; }
+
+  .msg-action-btn {
+    background: none; border: none;
+    color: var(--text-muted);
+    cursor: pointer; padding: 4px;
+    border-radius: 4px;
+    display: flex; align-items: center;
+    transition: color 0.12s;
+  }
+  .msg-action-btn:hover { color: var(--text-dark); background: rgba(0,0,0,0.04); }
+  .msg-action-btn svg { width: 14px; height: 14px; }
+
+  /* ── Typing indicator ── */
+  .typing-indicator {
+    display: flex; gap: 4px; padding: 8px 0;
+    align-items: center;
+  }
+  .typing-indicator .dot {
+    width: 7px; height: 7px;
+    background: var(--text-muted);
+    border-radius: 50%;
+    animation: bounce 1.4s infinite ease-in-out;
+  }
+  .typing-indicator .dot:nth-child(2) { animation-delay: 0.16s; }
+  .typing-indicator .dot:nth-child(3) { animation-delay: 0.32s; }
+
+  @keyframes bounce {
+    0%, 80%, 100% { transform: scale(0.7); opacity: 0.4; }
+    40% { transform: scale(1); opacity: 1; }
+  }
+
+  /* ── Sources panel ── */
+  .sources-panel {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-top: 8px;
+    box-shadow: var(--shadow);
+  }
+  .sources-panel .sp-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .sources-panel .sp-title svg { width: 12px; height: 12px; }
+
+  .source-card {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.12s;
+    margin-bottom: 2px;
+  }
+  .source-card:hover { background: #f5f6f8; }
+  .source-card .sc-icon {
+    width: 28px; height: 28px;
+    background: #f0f2f5;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .source-card .sc-icon svg { width: 14px; height: 14px; color: var(--text-secondary); }
+  .source-card .sc-name { font-size: 12px; font-weight: 500; color: var(--text-dark); }
+  .source-card .sc-meta { font-size: 10px; color: var(--text-muted); }
+
+  /* ── Input Area ── */
+  .input-area {
+    padding: 12px 24px 16px;
+    background: var(--bg-main);
+    flex-shrink: 0;
+  }
+
+  .input-container {
+    max-width: 780px;
+    margin: 0 auto;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    transition: border-color 0.15s;
+  }
+  .input-container:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(15, 52, 96, 0.08), var(--shadow-md);
+  }
+
+  .input-attachments {
+    padding: 8px 12px 0;
+    display: flex; gap: 6px; flex-wrap: wrap;
+  }
+
+  .attachment-chip {
+    display: flex; align-items: center; gap: 5px;
+    background: #f0f2f5;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
+  .attachment-chip svg { width: 12px; height: 12px; }
+  .attachment-chip .remove {
+    cursor: pointer; opacity: 0.5; margin-left: 2px;
+    transition: opacity 0.12s;
+  }
+  .attachment-chip .remove:hover { opacity: 1; }
+
+  .input-row {
+    display: flex; align-items: flex-end; gap: 8px;
+    padding: 10px 14px;
+  }
+
+  .input-tools {
+    display: flex; gap: 2px; padding-bottom: 4px;
+  }
+  .tool-btn {
+    background: none; border: none;
+    color: var(--text-muted);
+    cursor: pointer; padding: 5px;
+    border-radius: 6px;
+    display: flex; align-items: center;
+    transition: all 0.12s;
+  }
+  .tool-btn:hover { color: var(--text-dark); background: #f0f1f3; }
+  .tool-btn svg { width: 18px; height: 18px; }
+
+  .input-row textarea {
+    flex: 1;
+    border: none;
+    outline: none;
+    resize: none;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--text-dark);
+    line-height: 1.5;
+    max-height: 120px;
+    padding: 4px 0;
+    background: transparent;
+  }
+  .input-row textarea::placeholder { color: #b0b4c0; }
+
+  .send-btn {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, transform 0.1s;
+    flex-shrink: 0;
+    margin-bottom: 1px;
+  }
+  .send-btn:hover { background: #0d2b50; transform: scale(1.04); }
+  .send-btn svg { width: 18px; height: 18px; }
+
+  .input-hint {
+    text-align: center;
+    font-size: 10.5px;
+    color: var(--text-muted);
+    padding: 6px 0 0;
+  }
+
+  /* ── Table in chat ── */
+  .chat-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+    font-size: 12.5px;
+  }
+  .chat-table th {
+    text-align: left;
+    padding: 6px 10px;
+    background: #f5f6f8;
+    font-weight: 600;
+    border-bottom: 2px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  .chat-table td {
+    padding: 6px 10px;
+    border-bottom: 1px solid #eee;
+    color: var(--text-dark);
+  }
+
+  /* ── Map embed ── */
+  .map-container {
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    margin: 10px 0;
+    box-shadow: var(--shadow);
+    position: relative;
+  }
+  .map-container iframe {
+    display: block;
+    width: 100%;
+    height: 260px;
+    border: none;
+  }
+  .map-overlay {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #f8f9fb;
+    border-top: 1px solid var(--border);
+    font-size: 11.5px;
+    color: var(--text-secondary);
+  }
+  .map-overlay svg { width: 14px; height: 14px; flex-shrink: 0; color: var(--accent-bright); }
+  .map-overlay .map-coords {
+    margin-left: auto;
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+
+  /* ── Law reference cards ── */
+  .law-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    box-shadow: var(--shadow);
+    transition: border-color 0.15s;
+    position: relative;
+    cursor: pointer;
+    text-decoration: none;
+    display: block;
+    color: inherit;
+  }
+  .law-card:hover { border-color: #b0c4de; }
+  .law-card .lc-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .law-card .lc-icon {
+    width: 28px; height: 28px;
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .law-card .lc-icon svg { width: 14px; height: 14px; color: #fff; }
+  .lc-icon-federal { background: linear-gradient(135deg, #1a56db, #3b82f6); }
+  .lc-icon-state { background: linear-gradient(135deg, #0d7a3e, #22c55e); }
+  .lc-icon-eu { background: linear-gradient(135deg, #6d28d9, #a855f7); }
+  .law-card .lc-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-dark);
+    line-height: 1.3;
+  }
+  .law-card .lc-full { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+  .law-card .lc-body {
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+  .law-card .lc-sections {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 8px;
+  }
+  .law-card .lc-section {
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: #f0f2f5;
+    color: var(--text-secondary);
+    font-weight: 500;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+
+  .law-card .lc-link-hint {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 8px;
+    font-size: 10.5px;
+    color: #1a56db;
+    font-weight: 500;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .law-card:hover .lc-link-hint { opacity: 1; }
+  .law-card .lc-link-hint svg { width: 12px; height: 12px; }
+
+  /* ── Law preview popup ── */
+  .law-preview {
+    position: fixed;
+    width: 560px;
+    height: 420px;
+    background: #fff;
+    border: 1px solid #c0c4cc;
+    border-radius: 10px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08);
+    z-index: 1000;
+    overflow: hidden;
+    display: none;
+    flex-direction: column;
+    animation: previewFadeIn 0.2s ease;
+  }
+  .law-preview.visible { display: flex; }
+  @keyframes previewFadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .lp-chrome {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    background: #e8eaed;
+    border-bottom: 1px solid #d0d3d8;
+    flex-shrink: 0;
+  }
+  .lp-dots { display: flex; gap: 5px; flex-shrink: 0; }
+  .lp-dots span { width: 10px; height: 10px; border-radius: 50%; }
+  .lp-dots span:nth-child(1) { background: #ff5f57; }
+  .lp-dots span:nth-child(2) { background: #febc2e; }
+  .lp-dots span:nth-child(3) { background: #28c840; }
+  .lp-url-bar {
+    flex: 1;
+    background: #fff;
+    border-radius: 5px;
+    padding: 4px 10px;
+    font-size: 11px;
+    color: #555;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .lp-url-bar .lp-lock { color: #28c840; flex-shrink: 0; display: flex; }
+  .lp-url-bar .lp-lock svg { width: 11px; height: 11px; }
+  .lp-badge {
+    font-size: 9px; font-weight: 700;
+    padding: 2px 7px; border-radius: 4px;
+    color: #fff; flex-shrink: 0;
+  }
+  .lp-badge-ris { background: #c00; }
+  .lp-badge-eu { background: #003399; }
+  .law-preview iframe {
+    flex: 1;
+    width: 100%;
+    border: none;
+    background: #fff;
+  }
+
+  /* ── Right Pane: References & Quotes ── */
+  .right-pane {
+    width: 340px;
+    min-width: 340px;
+    background: #fff;
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .right-pane-header {
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .right-pane-header svg {
+    width: 16px; height: 16px;
+    color: var(--accent-bright);
+    flex-shrink: 0;
+  }
+
+  .right-pane-header .rp-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-dark);
+  }
+
+  .right-pane-header .rp-count {
+    margin-left: auto;
+    font-size: 10px;
+    background: #e8f0fe;
+    color: #1a56db;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+
+  .right-pane-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    padding: 0 12px;
+    flex-shrink: 0;
+  }
+
+  .rp-tab {
+    padding: 8px 12px;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .rp-tab:hover { color: var(--text-dark); }
+  .rp-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    font-weight: 600;
+  }
+
+  .right-pane-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+  }
+
+  /* Quote card */
+  .quote-card {
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .quote-card:hover {
+    border-color: #b0c4de;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .quote-card.active-quote {
+    border-color: var(--accent);
+    background: #f0f4fa;
+    box-shadow: 0 0 0 2px rgba(15, 52, 96, 0.08);
+  }
+
+  .quote-card .qc-source {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+
+  .quote-card .qc-source-icon {
+    width: 22px; height: 22px;
+    background: #e8f0fe;
+    border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .quote-card .qc-source-icon svg {
+    width: 11px; height: 11px; color: #1a56db;
+  }
+
+  .quote-card .qc-source-name {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: #1a56db;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .quote-card .qc-page {
+    margin-left: auto;
+    font-size: 9.5px;
+    color: var(--text-muted);
+    background: #f0f2f5;
+    padding: 1px 6px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    font-weight: 500;
+  }
+
+  .quote-card .qc-text {
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--text-dark);
+    border-left: 3px solid #d0d7e3;
+    padding-left: 10px;
+    margin: 6px 0;
+    font-style: italic;
+  }
+  .quote-card.active-quote .qc-text {
+    border-left-color: var(--accent);
+  }
+
+  .quote-card .qc-tag {
+    display: inline-block;
+    font-size: 9.5px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+    margin-right: 4px;
+    margin-top: 4px;
+  }
+  .qc-tag-geology { background: #e6f9ee; color: #0d7a3e; }
+  .qc-tag-hydro { background: #e8f0fe; color: #1a56db; }
+  .qc-tag-measure { background: #fef3e2; color: #b45309; }
+  .qc-tag-impact { background: #fde8e8; color: #c81e1e; }
+  .qc-tag-result { background: #f0e8fe; color: #6d28d9; }
+
+  .quote-card .qc-relevance {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 6px;
+  }
+  .qc-relevance-bar {
+    flex: 1;
+    height: 3px;
+    background: #e0e2e8;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .qc-relevance-bar .fill {
+    height: 100%;
+    border-radius: 2px;
+  }
+  .qc-relevance-label {
+    font-size: 9px;
+    color: var(--text-muted);
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+
+  /* Section divider in right pane */
+  .rp-section-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+    padding: 8px 0 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .rp-section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 1200px) {
+    .right-pane { width: 300px; min-width: 300px; }
+  }
+  @media (max-width: 960px) {
+    .right-pane { display: none; }
+  }
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════ SIDEBAR ════════════ -->
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <div class="logo">G</div>
+    <div class="brand">
+      GovChat AI
+      <small>Umweltrecht Assistent</small>
+    </div>
+  </div>
+
+  <button class="new-chat-btn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Neues Projekt
+  </button>
+
+  <div class="sidebar-search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" placeholder="Projekte durchsuchen…" />
+  </div>
+
+  <nav class="sidebar-nav">
+
+    <!-- Section: Projects -->
+    <div class="nav-section">
+      <div class="nav-section-label">Projekte</div>
+
+      <!-- Folder 1: Open -->
+      <div class="folder open">
+        <div class="folder-header" onclick="this.parentElement.classList.toggle('open')">
+          <svg class="folder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          Voestalpine L6
+          <span class="count">4</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="folder-items">
+          <div class="chat-item active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span class="chat-label">EAF Änderungen – Analyse</span>
+            <span class="chat-date">Heute</span>
+          </div>
+          <div class="chat-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span class="chat-label">Emissionsgrenzwerte Prüfung</span>
+            <span class="chat-date">Gestern</span>
+          </div>
+          <div class="chat-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span class="chat-label">Genehmigungsauflagen §77</span>
+            <span class="chat-date">05.02</span>
+          </div>
+          <div class="chat-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span class="chat-label">Lärmschutz Gutachten</span>
+            <span class="chat-date">03.02</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Folder 2 -->
+      <div class="folder">
+        <div class="folder-header" onclick="this.parentElement.classList.toggle('open')">
+          <svg class="folder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          Lenzing AG – Zellstoff
+          <span class="count">3</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="folder-items">
+          <div class="chat-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span class="chat-label">Abwassereinleitung Analyse</span>
+            <span class="chat-date">01.02</span>
+          </div>
+          <div class="chat-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span class="chat-label">BVT-Schlussfolgerungen</span>
+            <span class="chat-date">28.01</span>
+          </div>
+          <div class="chat-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span class="chat-label">UVP Screening</span>
+            <span class="chat-date">25.01</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Folder 3 -->
+      <div class="folder">
+        <div class="folder-header" onclick="this.parentElement.classList.toggle('open')">
+          <svg class="folder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          OMV Raffinerie Schwechat
+          <span class="count">5</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="folder-items">
+          <div class="chat-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span class="chat-label">SEVESO III Prüfung</span>
+            <span class="chat-date">22.01</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Folder 4 -->
+      <div class="folder">
+        <div class="folder-header" onclick="this.parentElement.classList.toggle('open')">
+          <svg class="folder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          Allgemein / Recherche
+          <span class="count">7</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="folder-items">
+          <div class="chat-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span class="chat-label">AWG Novelle 2024 Überblick</span>
+            <span class="chat-date">20.01</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="user-avatar">AR</div>
+    <div class="user-info">
+      <div class="name">Herr Raskin</div>
+      <div class="role">Abt. Umweltrecht</div>
+    </div>
+    <button class="settings-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </div>
+</aside>
+
+<!-- ════════════ MAIN ════════════ -->
+<main class="main">
+
+  <!-- Sub-header: Case Information -->
+  <div class="subheader">
+    <div class="case-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    </div>
+    <div class="case-info">
+      <div class="case-gz">
+        <span class="gz-label">Geschäftszeichen:</span>
+        AUWR-2008-10046/4357-Mi
+      </div>
+      <div class="case-title">Voestalpine Stahl GmbH, Projekt „L6" – Änderungen EAF, Strom</div>
+      <div class="case-badges">
+        <span class="badge badge-green">Genehmigungsverfahren</span>
+        <span class="badge badge-amber">Frist: 15.03.2026</span>
+      </div>
+    </div>
+    <div class="subheader-actions">
+      <button class="action-btn" onclick="alert('Sie sehen nun eine Liste aller Dokumente des Projekts.');">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        Alle Unterlagen (52)
+      </button>
+    </div>
+  </div>
+
+  <!-- Chat Messages -->
+  <div class="chat-area">
+    <div class="chat-container">
+
+      <!-- User message -->
+      <div class="message user">
+        <div class="message-avatar user">AR</div>
+        <div class="message-content">
+          <div class="message-header">
+            <span class="sender">Herr Raskin</span>
+            <span class="time">14:32</span>
+          </div>
+          <div class="message-bubble">
+            Was gibt's in der Unterlagen bezueglich Grundwasser?
+          </div>
+        </div>
+      </div>
+
+      <!-- AI message -->
+      <div class="message ai">
+        <div class="message-avatar ai">G</div>
+        <div class="message-content">
+          <div class="message-header">
+            <span class="sender">GovChat AI</span>
+            <span class="time">14:32</span>
+          </div>
+          <div class="message-bubble">
+            <p><strong>Dokumente zum Thema Grundwasser</strong></p>
+            <p>Es gibt 3 Hauptdokumente:</p>
+
+            <p><strong>1. <a href="#" onclick="alert('Das Dokument Beil07 – Teilgutachten Geologie, Hydrogeologie und Grundwasserwirtschaft wird Ihnen jetzt angezeigt.'); return false;" style="color:#2563eb;text-decoration:underline;cursor:pointer;">Beil07 – Teilgutachten Geologie, Hydrogeologie und Grundwasserwirtschaft</a></strong></p>
+            <ul>
+              <li><strong>Verfasser:</strong> Hans Kitzmueller, MSc (Abt. Wasserwirtschaft, Linz)</li>
+              <li><strong>Datum:</strong> 24.10.2025</li>
+              <li><strong>Gesamturteil:</strong> Auswirkungen auf Grundwasser werden bei Einhaltung der Massnahmen als <span class="highlight">geringfuegig</span> beurteilt. <span class="ref-num">1</span></li>
+            </ul>
+
+            <p><strong>Wesentliche Inhalte:</strong></p>
+            <ul>
+              <li><strong>Geologie:</strong> Das Projektgebiet liegt in der Boehmischen Masse (Granite/metamorphe Gesteine). Grundwasser tritt v.a. in Verwitterungsschichten (Flinz) und Talfuellungen auf, in 0,7–8,5 m Tiefe.</li>
+              <li><strong>Wassernutzungen:</strong> Entlang der Trasse (500m-Korridor) gibt es 46 genehmigungsfreie, 91 genehmigte Grundwassernutzungen und 29 Wasserschutzgebiete. <span class="ref-num">2</span> 5 Schutzgebiete liegen &lt; 100m zur Trasse.</li>
+              <li><strong>Wasserschutzgebiet Traberg Ahorn</strong> wird von der Trasse gequert (bei km 5+200). Eine temporaere Aussetzung der Schutzgebietsanordnung wurde beschlossen. <span class="ref-num">3</span></li>
+            </ul>
+
+            <p><strong>Bauphase – Auswirkungen:</strong></p>
+            <ul>
+              <li>Wasserhaltungsmassnahmen noetig (bis zu 21 l/s Wasserandrang bei Grossen Muehl-Querung) <span class="ref-num">5</span></li>
+              <li>Aenderungen der Hydrodynamik/Grundwasserneubildungsrate</li>
+              <li>Verminderung des Schutzpotenzials der Deckschichten</li>
+              <li><span class="highlight">7 Bereiche mit hoher bis sehr hoher Eingriffserheblichkeit</span> identifiziert <span class="ref-num">4</span></li>
+            </ul>
+
+            <p><strong>Betriebsphase – Auswirkungen:</strong></p>
+            <ul>
+              <li>Dauerhafte Drainageeffekte durch Rohrgraben moeglich</li>
+              <li>Thermischer Einfluss der Gasleitung (max. 50 °C) reicht 1,9 km ab Verdichterstation <span class="ref-num">6</span></li>
+              <li><span class="highlight">5 Konfliktbereiche</span> (4 Grundwassernutzungen + 1 Schutzgebiet)</li>
+            </ul>
+
+            <p><strong>Massnahmen:</strong></p>
+            <ul>
+              <li>12 Bau-Massnahmen (Bauzeitenbegrenzung, Dichtriegel, Beweissicherung, Ersatzwasserversorgungen, etc.)</li>
+              <li>3 Betriebs-Massnahmen (Wiederherstellung Drainagesysteme, Kondensatauffang, Ersatzneuerrichtung von Brunnen)</li>
+              <li>17 Nebenbestimmungen vorgeschlagen (Oelbindemittel, wasserfachliche Bauaufsicht, Dokumentation, etc.)</li>
+            </ul>
+
+            <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+
+            <p><strong>2. <a href="#" onclick="alert('Das Dokument D.11.100 – Fachbericht Grundwasser Rev B wird Ihnen jetzt angezeigt.'); return false;" style="color:#2563eb;text-decoration:underline;cursor:pointer;">D.11.100 – Fachbericht Grundwasser Rev B</a></strong></p>
+            <p>Der Grundwasser-Fachbericht der UVE (Umweltvertraeglichkeitserklaerung) selbst. Die Quelldatei war bei der Extraktion nicht verfuegbar, aber er wird im Teilgutachten intensiv referenziert.</p>
+
+            <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+
+            <p><strong>3. <a href="#" onclick="alert('Das Dokument OZ 157 – Auskunft FB Geologie, Hydrogeologie und Grundwasserwirtschaft (02.10.2025) wird Ihnen jetzt angezeigt.'); return false;" style="color:#2563eb;text-decoration:underline;cursor:pointer;">OZ 157 – Auskunft FB Geologie, Hydrogeologie und Grundwasserwirtschaft (02.10.2025)</a></strong></p>
+            <p><strong>Thema:</strong> Kumulative Auswirkungen durch die bestehende WAG-Leitung + neue Leitung</p>
+            <p><strong>Ergebnis:</strong></p>
+            <ul>
+              <li>Drainageeffekte der Bestandsleitung (Baujahr 1978–80) sind durch Setzungsprozesse nicht mehr vorhanden – kumulative Wirkung ausgeschlossen <span class="ref-num">7</span></li>
+              <li>Betriebstemperatur der Bestandsleitung: keine kumulativen Auswirkungen, da Verdichterstationen ca. 60 km entfernt <span class="ref-num">8</span></li>
+              <li>Wasserrechte/Wassernutzungen der Bestandsleitung im Ist-Zustand beruecksichtigt</li>
+              <li>Im Kreuzungsbereich der Leitungen nur temporaere baubedingte Auswirkungen</li>
+            </ul>
+
+            <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+
+            <p><strong>Fazit:</strong> Das Gutachten kommt zum Schluss, dass bei Einhaltung aller vorgesehenen Massnahmen sowohl in der Bau- als auch in der Betriebsphase <span class="highlight">keine mehr als geringfuegigen Auswirkungen</span> auf das Schutzgut Grundwasser zu erwarten sind. <span class="ref-num">1</span></p>
+          </div>
+
+          <!-- Sources panel -->
+          <div class="sources-panel">
+            <div class="sp-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              3 Quellen verwendet
+            </div>
+            <div class="source-card">
+              <div class="sc-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              </div>
+              <div>
+                <div class="sc-name">Beil07_Teilgutachten_Geologie_Hydrogeologie.pdf</div>
+                <div class="sc-meta">Vollständig · 24.10.2025</div>
+              </div>
+            </div>
+            <div class="source-card">
+              <div class="sc-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              </div>
+              <div>
+                <div class="sc-name">D.11.100_Fachbericht_Grundwasser_RevB.pdf</div>
+                <div class="sc-meta">Referenziert · nicht extrahierbar</div>
+              </div>
+            </div>
+            <div class="source-card">
+              <div class="sc-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              </div>
+              <div>
+                <div class="sc-name">OZ157_Auskunft_FB_Geologie_Hydrogeologie.pdf</div>
+                <div class="sc-meta">02.10.2025</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="message-actions">
+            <button class="msg-action-btn" title="Kopieren">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            </button>
+            <button class="msg-action-btn" title="Regenerieren">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            </button>
+            <button class="msg-action-btn" title="Bewerten">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ Q2: Where is the project? ═══ -->
+
+      <!-- User message 2 -->
+      <div class="message user">
+        <div class="message-avatar user">AR</div>
+        <div class="message-content">
+          <div class="message-header">
+            <span class="sender">Herr Raskin</span>
+            <span class="time">14:35</span>
+          </div>
+          <div class="message-bubble">
+            Wo findet das Projekt genau statt?
+          </div>
+        </div>
+      </div>
+
+      <!-- AI message 2: Map -->
+      <div class="message ai">
+        <div class="message-avatar ai">G</div>
+        <div class="message-content">
+          <div class="message-header">
+            <span class="sender">GovChat AI</span>
+            <span class="time">14:35</span>
+          </div>
+          <div class="message-bubble">
+            <p><strong>Standort des Vorhabens WAG Loop 1</strong></p>
+            <p>Das Projekt erstreckt sich ueber einen ca. <strong>40 km langen Abschnitt</strong> in <strong>Oberoesterreich</strong>, im Gebiet der Boehmischen Masse (Muehlviertel), zwischen:</p>
+            <ul>
+              <li><strong>Schieberstation Bad Leonfelden</strong> (Leitungs-km 205,3) im Suedosten</li>
+              <li><strong>Schieberstation Arnreit</strong> (Zwischenstation, Erweiterung um ca. 6 m)</li>
+              <li><strong>Messstation Oberkappel</strong> (Leitungs-km 244,8) im Nordwesten, an der Grenze zu Deutschland</li>
+            </ul>
+
+            <div class="map-container">
+              <iframe src="https://www.openstreetmap.org/export/embed.html?bbox=13.7%2C48.38%2C14.1%2C48.58&amp;layer=mapnik&amp;marker=48.48%2C13.9" allowfullscreen></iframe>
+              <div class="map-overlay">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                Muehlviertel, Oberoesterreich – Bad Leonfelden bis Oberkappel
+                <span class="map-coords">48°29'N 13°54'E</span>
+              </div>
+            </div>
+
+            <p>Die Trasse verlaeuft parallel zur bestehenden WAG-Leitung (Baujahr 1978–80) und quert mehrere Gewaesser, darunter die <strong>Grosse Muehl</strong> und die <strong>Ranna</strong>. Der Arbeitsstreifen betraegt 32 m auf landwirtschaftlichen Flaechen bzw. 23 m in Waldbereichen.</p>
+          </div>
+
+          <div class="message-actions">
+            <button class="msg-action-btn" title="Kopieren">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            </button>
+            <button class="msg-action-btn" title="Regenerieren">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ Q3: Which laws are important? ═══ -->
+
+      <!-- User message 3 -->
+      <div class="message user">
+        <div class="message-avatar user">AR</div>
+        <div class="message-content">
+          <div class="message-header">
+            <span class="sender">Herr Raskin</span>
+            <span class="time">14:38</span>
+          </div>
+          <div class="message-bubble">
+            Welche Gesetze und Rechtsgrundlagen sind fuer dieses Verfahren relevant?
+          </div>
+        </div>
+      </div>
+
+      <!-- AI message 3: Laws -->
+      <div class="message ai">
+        <div class="message-avatar ai">G</div>
+        <div class="message-content">
+          <div class="message-header">
+            <span class="sender">GovChat AI</span>
+            <span class="time">14:38</span>
+          </div>
+          <div class="message-bubble">
+            <p><strong>Relevante Rechtsgrundlagen fuer das UVP-Verfahren WAG Loop 1</strong></p>
+            <p>Basierend auf den Projektunterlagen sind folgende Gesetze und Verordnungen massgeblich:</p>
+
+            <p style="font-size:11.5px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 8px;">Bundesgesetze</p>
+
+            <a class="law-card" href="https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=10010767" target="_blank" data-law-url="http://ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=10010767" data-law-source="ris">
+              <div class="lc-header">
+                <div class="lc-icon lc-icon-federal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></div>
+                <div>
+                  <div class="lc-name">UVP-G 2000</div>
+                  <div class="lc-full">Umweltvertraeglichkeitspruefungsgesetz 2000</div>
+                </div>
+              </div>
+              <div class="lc-body">Zentrale Verfahrensgrundlage. Regelt das gesamte Genehmigungsverfahren einschliesslich Oeffentlichkeitsbeteiligung, Gutachtenerstellung und Bescheiderlass. Das Vorhaben faellt als Erdgasfernleitung unter die UVP-Pflicht.</div>
+              <div class="lc-sections">
+                <span class="lc-section">§ 12 Abs. 6</span>
+                <span class="lc-section">§ 17 Abs. 2</span>
+                <span class="lc-section">§ 20</span>
+                <span class="lc-section">§ 22</span>
+              </div>
+              <div class="lc-link-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> ris.bka.gv.at</div>
+            </a>
+
+            <a class="law-card" href="https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=10010290" target="_blank" data-law-url="http://ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=10010290" data-law-source="ris">
+              <div class="lc-header">
+                <div class="lc-icon lc-icon-federal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+                <div>
+                  <div class="lc-name">WRG 1959</div>
+                  <div class="lc-full">Wasserrechtsgesetz 1959</div>
+                </div>
+              </div>
+              <div class="lc-body">Massgeblich fuer saemtliche Grundwasser- und Oberflaechengewaesser-Belange: Schutzgebiete, Wasserhaltungsmassnahmen, Einleitungen, Beweissicherung. Im Teilgutachten Hydrogeologie zentral referenziert.</div>
+              <div class="lc-sections">
+                <span class="lc-section">§§ 9–15</span>
+                <span class="lc-section">§§ 30–34</span>
+                <span class="lc-section">§§ 38–41</span>
+                <span class="lc-section">§ 105 Abs. 1</span>
+                <span class="lc-section">§ 121 Abs. 1</span>
+              </div>
+              <div class="lc-link-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> ris.bka.gv.at</div>
+            </a>
+
+            <a class="law-card" href="https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=20007523" target="_blank" data-law-url="http://ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=20007523" data-law-source="ris">
+              <div class="lc-header">
+                <div class="lc-icon lc-icon-federal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+                <div>
+                  <div class="lc-name">GWG 2011</div>
+                  <div class="lc-full">Gaswirtschaftsgesetz 2011</div>
+                </div>
+              </div>
+              <div class="lc-body">Spezialgesetz fuer Erdgasleitungen. Regelt Errichtung und Betrieb der Fernleitung, technische Sicherheitsanforderungen sowie die Genehmigungspflichten der Gas Connect Austria GmbH als Leitungsbetreiberin.</div>
+              <div class="lc-sections">
+                <span class="lc-section">§§ 4–5</span>
+                <span class="lc-section">§§ 133–140</span>
+                <span class="lc-section">§§ 150–153</span>
+              </div>
+              <div class="lc-link-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> ris.bka.gv.at</div>
+            </a>
+
+            <a class="law-card" href="https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=10010371" target="_blank" data-law-url="http://ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=10010371" data-law-source="ris">
+              <div class="lc-header">
+                <div class="lc-icon lc-icon-federal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg></div>
+                <div>
+                  <div class="lc-name">Forstgesetz 1975</div>
+                  <div class="lc-full">Forstgesetz 1975</div>
+                </div>
+              </div>
+              <div class="lc-body">Relevant fuer Rodungsbewilligungen entlang der Trasse. In Waldbereichen wird ein dauerhafter Rodungsstreifen von 3+5 m bzw. 3+3 m Breite benoetigt.</div>
+              <div class="lc-link-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> ris.bka.gv.at</div>
+            </a>
+
+            <p style="font-size:11.5px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 8px;">Landesgesetze (Oberoesterreich)</p>
+
+            <a class="law-card" href="https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=LROO&Gesetzesnummer=20000147" target="_blank" data-law-url="http://ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=LROO&Gesetzesnummer=20000147" data-law-source="ris">
+              <div class="lc-header">
+                <div class="lc-icon lc-icon-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c-4.97 0-9-2.686-9-6v-4"/><path d="M12 14c-4.97 0-9-2.686-9-6s4.03-6 9-6 9 2.686 9 6"/><path d="M21 8v4c0 3.314-4.03 6-9 6"/><path d="M12 14v8"/></svg></div>
+                <div>
+                  <div class="lc-name">Oo. Natur- und Landschaftsschutzgesetz</div>
+                  <div class="lc-full">Oo. NSchG 2001</div>
+                </div>
+              </div>
+              <div class="lc-body">Naturschutzrechtliche Bewilligung fuer Eingriffe in geschuetzte Landschaftsteile und Lebensraeume im Muehlviertel. Ergaenzt durch die Oo. Artenschutzverordnung.</div>
+              <div class="lc-link-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> ris.bka.gv.at</div>
+            </a>
+
+            <a class="law-card" href="https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=LROO&Gesetzesnummer=10000318" target="_blank" data-law-url="http://ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=LROO&Gesetzesnummer=10000318" data-law-source="ris">
+              <div class="lc-header">
+                <div class="lc-icon lc-icon-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg></div>
+                <div>
+                  <div class="lc-name">Oo. Bodenschutzgesetz 1991</div>
+                  <div class="lc-full">Oo. BSchG 1991</div>
+                </div>
+              </div>
+              <div class="lc-body">Schutz des Bodens vor Kontamination und Verdichtung waehrend der Bauphase. Relevant fuer Rekultivierungsmassnahmen im Arbeitsstreifen gemaess OENORM L1211.</div>
+              <div class="lc-link-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> ris.bka.gv.at</div>
+            </a>
+
+            <a class="law-card" href="https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=LrOO&Gesetzesnummer=10000313" target="_blank" data-law-url="http://ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=LrOO&Gesetzesnummer=10000313" data-law-source="ris">
+              <div class="lc-header">
+                <div class="lc-icon lc-icon-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg></div>
+                <div>
+                  <div class="lc-name">Oo. Strassengesetz 1991 / Bauordnung 1994</div>
+                  <div class="lc-full">Oo. StrG / Oo. BauO</div>
+                </div>
+              </div>
+              <div class="lc-body">Betrifft Strassenquerungen der Trasse und bautechnische Anforderungen an die Stationsanlagen (Bad Leonfelden, Arnreit, Oberkappel).</div>
+              <div class="lc-sections">
+                <span class="lc-section">§§ 7, 18, 20, 40a StrG</span>
+              </div>
+              <div class="lc-link-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> ris.bka.gv.at</div>
+            </a>
+
+            <p style="font-size:11.5px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 8px;">EU-Recht</p>
+
+            <a class="law-card" href="https://eur-lex.europa.eu/legal-content/DE/TXT/?uri=CELEX:32001L0042" target="_blank" data-law-url="http://eur-lex.europa.eu/legal-content/DE/TXT/?uri=CELEX:32001L0042" data-law-source="eu">
+              <div class="lc-header">
+                <div class="lc-icon lc-icon-eu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
+                <div>
+                  <div class="lc-name">Richtlinie 2001/42/EG</div>
+                  <div class="lc-full">SUP-Richtlinie (Strategische Umweltpruefung)</div>
+                </div>
+              </div>
+              <div class="lc-body">EU-rechtliche Grundlage fuer die strategische Umweltpruefung. Die oesterreichische UVP-G-Novelle setzt diese Richtlinie um. Relevant fuer grenzueberschreitende Aspekte (Grenze zu Deutschland bei Oberkappel).</div>
+              <div class="lc-link-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> eur-lex.europa.eu</div>
+            </a>
+
+            <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+
+            <p><strong>Hinweis:</strong> Weitere Spezialgesetze koennen im Einzelfall relevant sein, z.B. das <strong>Eisenbahngesetz 1957</strong> (§§ 42–43a) fuer die Bahnquerung bei km 16+955, das <strong>Abfallwirtschaftsgesetz 2002</strong> fuer Aushubmaterial sowie das <strong>Denkmalschutzgesetz</strong> fuer allfaellige archaeologische Funde waehrend der Bauphase.</p>
+          </div>
+
+          <div class="message-actions">
+            <button class="msg-action-btn" title="Kopieren">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            </button>
+            <button class="msg-action-btn" title="Regenerieren">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Input Area -->
+  <div class="input-area">
+    <div class="input-container">
+      <div class="input-row">
+        <textarea rows="1" placeholder="Nachricht eingeben… (z.B. Rechtsfrage, Bescheidentwurf, Analyse)"></textarea>
+        <button class="send-btn" title="Senden">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="input-hint">GovChat AI kann Fehler machen. Bitte prüfen Sie alle Angaben. Keine Verarbeitung vertraulicher Daten.</div>
+  </div>
+
+</main>
+
+<!-- ════════════ RIGHT PANE: REFERENCES & QUOTES ════════════ -->
+<aside class="right-pane">
+  <div class="right-pane-header">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    <span class="rp-title">Quellen & Zitate</span>
+    <span class="rp-count">8 Stellen</span>
+  </div>
+
+  <div class="right-pane-tabs">
+    <div class="rp-tab active">Zitate</div>
+    <div class="rp-tab">Dokumente</div>
+  </div>
+
+  <div class="right-pane-body">
+
+    <!-- Section: Beil07 Teilgutachten -->
+    <div class="rp-section-label">Beil07 – Teilgutachten Hydrogeologie</div>
+
+    <div class="quote-card active-quote">
+      <div class="qc-source">
+        <span class="qc-num">1</span>
+        <span class="qc-source-name">Beil07_TGA_Geologie_Hydrogeologie.pdf</span>
+        <span class="qc-page">S. 46–47</span>
+      </div>
+      <div class="qc-text">Aus fachlicher Sicht wird festgehalten, dass unter Einhaltung der definierten Massnahmen fuer die Bauphase von keinen mehr als geringfuegigen Auswirkungen und fuer die Betriebsphase ebenfalls von keinen mehr als geringfuegigen Auswirkungen auf das gegenstaendliche Schutzgut ausgegangen wird.</div>
+      <div>
+        <span class="qc-tag qc-tag-result">Gesamturteil</span>
+      </div>
+      <div class="qc-relevance">
+        <div class="qc-relevance-bar"><div class="fill" style="width:98%;background:#22c55e;"></div></div>
+        <span class="qc-relevance-label">98% Relevanz</span>
+      </div>
+    </div>
+
+    <div class="quote-card">
+      <div class="qc-source">
+        <span class="qc-num">2</span>
+        <span class="qc-source-name">Beil07_TGA_Geologie_Hydrogeologie.pdf</span>
+        <span class="qc-page">S. 8–9</span>
+      </div>
+      <div class="qc-text">Entlang der geplanten Trasse wurden bis zu einer Entfernung von 500 m 46 genehmigungsfreie Grundwassernutzungen, 91 genehmigte Grundwassernutzungen und 29 Wasserschutzgebiete erhoben.</div>
+      <div>
+        <span class="qc-tag qc-tag-hydro">Wassernutzungen</span>
+      </div>
+      <div class="qc-relevance">
+        <div class="qc-relevance-bar"><div class="fill" style="width:94%;background:#22c55e;"></div></div>
+        <span class="qc-relevance-label">94% Relevanz</span>
+      </div>
+    </div>
+
+    <div class="quote-card">
+      <div class="qc-source">
+        <span class="qc-num">3</span>
+        <span class="qc-source-name">Beil07_TGA_Geologie_Hydrogeologie.pdf</span>
+        <span class="qc-page">S. 10–11</span>
+      </div>
+      <div class="qc-text">Das Wasserschutzgebiet Traberg Ahorn wird durch die geplante Trassenachse sowie den Arbeitsstreifen gequert. Es befindet sich bei km 5+200. Auf Basis der Stellungnahme BHUUWA-2024-428276/3-ZP wurde dem Ersuchen um temporaere Aussetzung der Schutzgebietsanordnung nachgekommen.</div>
+      <div>
+        <span class="qc-tag qc-tag-impact">Schutzgebiet</span>
+        <span class="qc-tag qc-tag-hydro">Traberg Ahorn</span>
+      </div>
+      <div class="qc-relevance">
+        <div class="qc-relevance-bar"><div class="fill" style="width:91%;background:#22c55e;"></div></div>
+        <span class="qc-relevance-label">91% Relevanz</span>
+      </div>
+    </div>
+
+    <div class="quote-card">
+      <div class="qc-source">
+        <span class="qc-num">4</span>
+        <span class="qc-source-name">Beil07_TGA_Geologie_Hydrogeologie.pdf</span>
+        <span class="qc-page">S. 16</span>
+      </div>
+      <div class="qc-text">Sieben Bereiche wurden mit einer hohen bis sehr hohen Eingriffserheblichkeit ausgewiesen. Auf Basis der vorangegangenen Ausfuehrungen wird entlang der Trasse waehrend der Bauphase von zumindest einer geringen Eingriffsintensitaet in Bezug auf das Schutzgut Grundwasser ausgegangen.</div>
+      <div>
+        <span class="qc-tag qc-tag-impact">Bauphase</span>
+        <span class="qc-tag qc-tag-impact">Erheblichkeit</span>
+      </div>
+      <div class="qc-relevance">
+        <div class="qc-relevance-bar"><div class="fill" style="width:89%;background:#eab308;"></div></div>
+        <span class="qc-relevance-label">89% Relevanz</span>
+      </div>
+    </div>
+
+    <div class="quote-card">
+      <div class="qc-source">
+        <span class="qc-num">5</span>
+        <span class="qc-source-name">Beil07_TGA_Geologie_Hydrogeologie.pdf</span>
+        <span class="qc-page">S. 13–14</span>
+      </div>
+      <div class="qc-text">Fuer die geplante geschlossene Querung der Bahnstrecke bei km 16+955 – Grosse Muehl – wurde ein Wasserandrang von ca. 21 l/s errechnet. Der Absenktrichter wurde mit ca. 420 m abgeschaetzt.</div>
+      <div>
+        <span class="qc-tag qc-tag-hydro">Wasserhaltung</span>
+        <span class="qc-tag qc-tag-measure">Bauphase</span>
+      </div>
+      <div class="qc-relevance">
+        <div class="qc-relevance-bar"><div class="fill" style="width:85%;background:#eab308;"></div></div>
+        <span class="qc-relevance-label">85% Relevanz</span>
+      </div>
+    </div>
+
+    <div class="quote-card">
+      <div class="qc-source">
+        <span class="qc-num">6</span>
+        <span class="qc-source-name">Beil07_TGA_Geologie_Hydrogeologie.pdf</span>
+        <span class="qc-page">S. 17</span>
+      </div>
+      <div class="qc-text">Die maximal zulaessige Betriebstemperatur innerhalb der Gasleitung wird mit 50°C angegeben. Ab der Verdichterstation reicht der thermische Einfluss bis zu 1,9 km. Ab dieser Entfernung betraegt die Leitungsaussenwandtemperatur 13°C.</div>
+      <div>
+        <span class="qc-tag qc-tag-impact">Betriebsphase</span>
+        <span class="qc-tag qc-tag-hydro">Thermik</span>
+      </div>
+      <div class="qc-relevance">
+        <div class="qc-relevance-bar"><div class="fill" style="width:82%;background:#eab308;"></div></div>
+        <span class="qc-relevance-label">82% Relevanz</span>
+      </div>
+    </div>
+
+    <!-- Section: OZ 157 -->
+    <div class="rp-section-label">OZ 157 – Auskunft Hydrogeologie</div>
+
+    <div class="quote-card">
+      <div class="qc-source">
+        <span class="qc-num">7</span>
+        <span class="qc-source-name">OZ157_Auskunft_FB_Geologie.pdf</span>
+        <span class="qc-page">S. 1</span>
+      </div>
+      <div class="qc-text">Die Gasleitung wurde in den Jahren 1978–1980 errichtet und 1980 in Betrieb genommen. Die Drainageeffekte sind infolge zeitabhaengiger Setzungsprozesse nicht mehr vorhanden. Kumulative Auswirkungen hinsichtlich Drainageeffekte koennen demnach ausgeschlossen werden.</div>
+      <div>
+        <span class="qc-tag qc-tag-result">Kumulativ</span>
+        <span class="qc-tag qc-tag-hydro">Drainage</span>
+      </div>
+      <div class="qc-relevance">
+        <div class="qc-relevance-bar"><div class="fill" style="width:93%;background:#22c55e;"></div></div>
+        <span class="qc-relevance-label">93% Relevanz</span>
+      </div>
+    </div>
+
+    <div class="quote-card">
+      <div class="qc-source">
+        <span class="qc-num">8</span>
+        <span class="qc-source-name">OZ157_Auskunft_FB_Geologie.pdf</span>
+        <span class="qc-page">S. 1</span>
+      </div>
+      <div class="qc-text">Betriebliche Auswirkungen aufgrund der Betriebstemperatur der Gasleitung koennen ebenso ausgeschlossen werden, zumal sich die Verdichterstationen der bestehenden und neu zu errichtenden Gasleitungen in einer Entfernung von etwa 60 km befinden.</div>
+      <div>
+        <span class="qc-tag qc-tag-result">Kumulativ</span>
+        <span class="qc-tag qc-tag-hydro">Temperatur</span>
+      </div>
+      <div class="qc-relevance">
+        <div class="qc-relevance-bar"><div class="fill" style="width:87%;background:#eab308;"></div></div>
+        <span class="qc-relevance-label">87% Relevanz</span>
+      </div>
+    </div>
+
+  </div>
+</aside>
+
+<!-- Law preview popup -->
+<div class="law-preview" id="lawPreview">
+  <div class="lp-chrome">
+    <div class="lp-dots"><span></span><span></span><span></span></div>
+    <div class="lp-url-bar">
+      <span class="lp-lock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+      <span id="lpUrl"></span>
+    </div>
+    <span class="lp-badge" id="lpBadge"></span>
+  </div>
+  <iframe id="lpIframe"></iframe>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var PROXY = 'https://silent-snowflake-c2db.alexander-raskin.workers.dev/';
+  var preview = document.getElementById('lawPreview');
+  var lpUrl = document.getElementById('lpUrl');
+  var lpBadge = document.getElementById('lpBadge');
+  var lpIframe = document.getElementById('lpIframe');
+  var showTimer = null;
+  var hideTimer = null;
+  var currentCard = null;
+  var cards = document.querySelectorAll('a.law-card[data-law-url]');
+
+  console.log('[LawPreview] Found ' + cards.length + ' law cards');
+
+  function positionPreview(card) {
+    var rect = card.getBoundingClientRect();
+    var pw = 560, ph = 420;
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var left = rect.right + 12;
+    var top = rect.top;
+    if (left + pw > vw - 16) left = rect.left - pw - 12;
+    if (left < 16) left = Math.max(16, (vw - pw) / 2);
+    if (top + ph > vh - 16) top = vh - ph - 16;
+    if (top < 16) top = 16;
+    preview.style.left = left + 'px';
+    preview.style.top = top + 'px';
+  }
+
+  function showPreview(card) {
+    var url = card.getAttribute('data-law-url');
+    var source = card.getAttribute('data-law-source');
+    if (!url) return;
+    currentCard = card;
+
+    try {
+      var u = new URL(url);
+      lpUrl.textContent = u.hostname + u.pathname.substring(0, 35) + '\u2026';
+    } catch(e) {
+      lpUrl.textContent = url.substring(0, 50);
+    }
+    lpBadge.textContent = source === 'eu' ? 'EUR-Lex' : 'RIS';
+    lpBadge.className = 'lp-badge ' + (source === 'eu' ? 'lp-badge-eu' : 'lp-badge-ris');
+
+    var proxied = PROXY + url;
+    if (lpIframe.getAttribute('data-loaded') !== url) {
+      lpIframe.src = proxied;
+      lpIframe.setAttribute('data-loaded', url);
+    }
+
+    positionPreview(card);
+    preview.classList.add('visible');
+  }
+
+  function hidePreview() {
+    preview.classList.remove('visible');
+    currentCard = null;
+  }
+
+  cards.forEach(function(card) {
+    card.addEventListener('mouseenter', function(e) {
+      clearTimeout(hideTimer);
+      showTimer = setTimeout(function() { showPreview(card); }, 400);
+    });
+    card.addEventListener('mouseleave', function(e) {
+      clearTimeout(showTimer);
+      hideTimer = setTimeout(hidePreview, 300);
+    });
+  });
+
+  // Keep preview open when mouse enters it, hide when it leaves
+  preview.addEventListener('mouseenter', function() {
+    clearTimeout(hideTimer);
+  });
+  preview.addEventListener('mouseleave', function() {
+    hideTimer = setTimeout(hidePreview, 300);
+  });
+
+  window.addEventListener('scroll', function() {
+    if (currentCard) positionPreview(currentCard);
+  }, true);
+});
+</script>
+
+</body>
+</html>
